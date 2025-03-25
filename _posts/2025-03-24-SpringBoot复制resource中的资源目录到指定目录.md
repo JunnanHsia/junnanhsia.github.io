@@ -11,7 +11,7 @@ tags: [SpringBoot,框架操作,操作resource]
 ---
 
 ##### 测试图片的展示
-![测试图片](./images/image.png)
+![测试图片](/assets/img/posts/image.png)
 
 # 一级标题
 ## 二级标题
