@@ -1,6 +1,6 @@
 ---
 title: SpringBoot复制resource中的资源目录到指定目录
-date: 2025-03-24 17:00:00
+date: 2025-03-24 17:00:00 +0800
 categories: [后端, 技术细节]
 tags: [SpringBoot,框架操作,操作resource]
 ---
