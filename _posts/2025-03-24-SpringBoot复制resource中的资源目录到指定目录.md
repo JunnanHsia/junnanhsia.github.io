@@ -1,11 +1,9 @@
 ---
 title: SpringBoot复制resource中的资源目录到指定目录
+description: 当想在程序运行时动态的更改部分配置,可以将配置放置在resource目录中,然后程序启动时在进行配置文件的读取,想要动态刷新配置可以重复的进行读取,或者代码中监听文件的变动,此时就需要将resource目录中的文件,拷贝到jar包外部的动作
 date: 2025-03-24 17:00:00 +0800
 categories: [后端, 技术细节]
 tags: [SpringBoot,框架操作,操作resource]
----
----
-当想在程序运行时动态的更改部分配置,可以将配置放置在resource目录中,然后程序启动时在进行配置文件的读取,想要动态刷新配置可以重复的进行读取,或者代码中监听文件的变动,此时就需要将resource目录中的文件,拷贝到jar包外部的动作
 ---
 
 ##### 一、工具类（依赖hutool）
@@ -29,7 +27,10 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 /**
+ * @author Jeff@夏俊男
  * @description 库文件拷贝工具
+ * @company 天恩科技
+ * @create: 2024/8/30 14:57
  **/
 @Slf4j
 public class ResourceFileCopyUtil {
@@ -38,7 +39,7 @@ public class ResourceFileCopyUtil {
      * 从jar中拷贝一份库文件副本到jar的运行同级目录下,用于后续加载
      *
      * @param resourceRelativePath resource目录下资源相对路径,示例 /resources/templates/ 目录则传templates
-     * @param targetFolderPath     目标的外部系统的文件夹路径,给空则默认当前jar包所在路径
+     * @param targetFolderPath     目标的外部系统的文件夹路径(绝对路径),给空则默认当前jar包所在路径
      * @throws IOException
      */
     public static String copyRecourseFromJarByFolder(String resourceRelativePath, String targetFolderPath) {
@@ -59,13 +60,13 @@ public class ResourceFileCopyUtil {
             }
             distPath = new File(jarPath);
         }
-        distPath = new File(distPath, resourceRelativePath);
-        log.info("copyRecourseFromJarByFolder: 目标路径:{}", distPath);
-        if (!distPath.exists()) {
+        File finalDistPath = new File(distPath, resourceRelativePath);
+        log.info("copyRecourseFromJarByFolder: 目标路径:{}", finalDistPath);
+        if (!finalDistPath.exists()) {
             //如果不存在,则拷贝到jar同级目录下
             log.info("copyRecourseFromJarByFolder:文件不存在,进行拷贝!");
             try {
-                ResourceFileCopyUtil.loadRecourseFromJarByFolder(resourceRelativePath, distPath.getParent());
+                ResourceFileCopyUtil.loadRecourseFromJarByFolder(resourceRelativePath, distPath.getAbsolutePath());
             } catch (Exception e) {
                 log.error("copyRecourseFromJarByFolder: 失败,请检查配置项是否正确:{}", e.getMessage());
                 throw new RuntimeException(e);
@@ -75,7 +76,7 @@ public class ResourceFileCopyUtil {
             log.info("copyRecourseFromJarByFolder:已经存在,无需拷贝!");
             //TODO  拓展校验文件的md5是否和现有相同,如果不同,则重新拷贝
         }
-        return distPath;
+        return finalDistPath;
     }
 
     public static void loadRecourseFromJarByFolder(String folderPath, String targetFolderPath) throws IOException {
@@ -157,14 +158,20 @@ public class ResourceFileCopyUtil {
         }
         FileUtil.writeFromStream(is, file);
     }
+
 }
 ```
 
 ##### 二、使用
 ```java
-//服务初始化后,拷贝文件到jar包的同级目录下
+//服务初始化后,拷贝resource目录下的templates目录到jar包的同级目录下，返回最终的文件根目录
 @PostConstruct
 public void init() {
     String distPath = ResourceFileCopyUtil.copyRecourseFromJarByFolder("templates", "");
+}
+//服务初始化后,拷贝resource目录下的config/1.cfg文件到jar包的同级目录下，返回最终文件路径
+@PostConstruct
+public void init() {
+    String distPath = ResourceFileCopyUtil.copyRecourseFromJarByFolder("config/1.cfg", "");
 }
 ```
