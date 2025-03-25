@@ -125,11 +125,11 @@ comments:
     repo_id: R_kgDOOMUnyA
     category: Announcements
     category_id: DIC_kwDOOMUnyM4Cob8s
-    mapping: pathname # optional, default to 'pathname'
-    strict: 0 # optional, default to '0'
-    input_position: bottom # optional, default to 'bottom'
-    lang: zh-CN # optional, default to the value of `site.lang`
-    reactions_enabled: # optional, default to the value of `1`
+    mapping: pathname
+    strict: 0
+    input_position: bottom
+    lang: zh-CN
+    reactions_enabled: 1
 
 # Self-hosted static assets, optional › https://github.com/cotes2020/chirpy-static-assets
 assets:

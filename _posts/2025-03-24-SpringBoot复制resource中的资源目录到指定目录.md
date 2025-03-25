@@ -27,10 +27,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 /**
- * @author Jeff@夏俊男
- * @description 库文件拷贝工具
- * @company 天恩科技
- * @create: 2024/8/30 14:57
+ * @description jar包文件拷贝工具
  **/
 @Slf4j
 public class ResourceFileCopyUtil {
