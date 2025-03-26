@@ -4,9 +4,14 @@ description: 当想在程序运行时动态的更改部分配置,可以将配置
 date: 2025-03-24 17:00:00 +0800
 categories: [后端, 技术细节]
 tags: [SpringBoot,框架操作,操作resource]
+toc: true
+comments: true
+mermaid: true
+math: true
+pin: false
 ---
 
-##### 一、工具类（依赖hutool）
+## 一、工具类（依赖hutool）
 ```java
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.resource.ResourceUtil;
@@ -159,7 +164,7 @@ public class ResourceFileCopyUtil {
 }
 ```
 
-##### 二、使用
+## 二、使用
 ```java
 //服务初始化后,拷贝resource目录下的templates目录到jar包的同级目录下，返回最终的文件根目录
 @PostConstruct
