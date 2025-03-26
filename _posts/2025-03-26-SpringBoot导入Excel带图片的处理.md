@@ -10,7 +10,7 @@ mermaid: true
 math: true
 pin: false
 image:
-  path: /assets/posts/poi.png
+  path: /assets/img/posts/poi.png
   alt: java apache poi.
 ---
 
