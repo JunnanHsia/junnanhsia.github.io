@@ -11,12 +11,13 @@ math: true
 pin: false
 image:
   path: /assets/img/posts/poi.png
-  alt: java apache poi.
+  alt: SpringBoot导入Excel带图片的处理
 ---
 
 ##### 一、工具类
 1. 核心工具类（依赖hutool,lombok）
 ```java
+
 import cn.afterturn.easypoi.excel.annotation.Excel;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
@@ -886,9 +887,11 @@ public final class LambdaUtils {
     /* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  反射工具 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
 
 }
+
 ```
 3. 辅助类（不可作为静态内部类，必须做独立类）
 ```java
+
 import java.io.*;
 
 /**
@@ -944,21 +947,26 @@ public class SerializedLambda implements Serializable {
         return implMethodName;
     }
 }
+
 ```
 
 ##### 二、使用
 1. 在待导入的模板类中增加注解
 ```java
+
 import cn.afterturn.easypoi.excel.annotation.Excel;
 public class PitfallReportImport{
     //此处使用的是easypoi中的@Excel注解，此块主要是为了拿到字段对应到Excel文件中的表头的汉字名称，如果不用这个注解也可以，只需要更改工具类中对应的方法即可
     @Excel(name = "隐患照片")
     private String checkImg;//当前可以定义为String类型或者File类型，会根据类型进行填充；
 }
+
 ```
 2. 工具类使用
 ```java
+
 List<PitfallReportImport> dicImportVos = ExcelUtil.importExcel(file, 1, 1, PitfallReportImport.class);//此处使用easypoi填充List<PitfallReportImport>集合数据
 ExcelPicUtilPro.flatExcelImg2List(file,  1,  dicImportVos, PitfallReportImport::getCheckImg);
 //调用完工具类后，dicImportVos中条目的checkImg会被填充上对应的图片路径（前提是图片存在）
+
 ```
