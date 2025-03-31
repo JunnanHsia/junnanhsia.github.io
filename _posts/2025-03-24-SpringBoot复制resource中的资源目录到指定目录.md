@@ -9,6 +9,9 @@ comments: true
 mermaid: true
 math: true
 pin: false
+image:
+  path: /assets/img/posts/java.jpg
+  alt: SpringBoot复制resource中的资源目录到指定目录
 ---
 
 ## 一、工具类（依赖hutool）
