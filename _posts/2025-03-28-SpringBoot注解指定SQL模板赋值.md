@@ -97,11 +97,14 @@ public @interface FieldSqlReflection {
 ### 2.注解实现类（依赖hutool、lombok、SpingAop）
 ```java
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.convert.Convert;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.annotations.*;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -160,24 +163,85 @@ public class FieldSqlReflectionAspect {
 
         /* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ 请求参数的处理 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
         if (fieldReflection.reqEnable()) {
-            int reqParamsIndex = fieldReflection.reqParamsIndex();
             // 获取方法传入参数
             Object[] params = joinPoint.getArgs();
             if (params != null && params.length > 0) {
-                if (reqParamsIndex > 0 && reqParamsIndex < params.length) {
+                int reqParamsIndex = fieldReflection.reqParamsIndex();
+                if (reqParamsIndex >= 0 && reqParamsIndex < params.length) {
                     // 传入参数中指定索引的参数
-                    Object reqParams = params[reqParamsIndex];
-                    if (reqParams != null) {
+                    Object reqParam = params[reqParamsIndex];
+                    if (reqParam != null) {
                         String[] reqParamsSqlTemplates = fieldReflection.reqParamsSqlTemplates();
                         if (ArrayUtil.isNotEmpty(reqParamsSqlTemplates)) {
+                            boolean isMap = reqParam instanceof Map;
                             for (String reqParamsSqlTemplate : reqParamsSqlTemplates) {
+                                if (StrUtil.isEmpty(reqParamsSqlTemplate) || !reqParamsSqlTemplate.contains("id") || !reqParamsSqlTemplate.contains("#{")) {
+                                    //防御编程,防止SQL模板写错
+                                    continue;
+                                }
+                                try {
+                                    //解析SQL模板,处理目标字段和源字段
+                                    String mainIdFieldStr = ReUtil.getGroup1(Pattern.compile("#\\{(.*?)\\}"), reqParamsSqlTemplate);//源字段主键
+                                    List<String> mainIdFields = StrUtil.split(mainIdFieldStr, ',');//存在多个主键id的情况
 
+                                    List<String> cfDists = ReUtil.findAllGroup1(Pattern.compile("[as,AS] (\\w+)\\s*[\\\\, ]", Pattern.MULTILINE), reqParamsSqlTemplate);//目标字段集合
+                                    cfDists.remove("id");//目标,不应该包含主键
+                                    cfDists.removeAll(mainIdFields);//目标,不应该包含主键
+
+                                    boolean hasAllField = false;
+                                    if (!isMap) {//校验对象中的字段是否都存在
+                                        List<String> fieldNames = CollUtil.newArrayList(mainIdFields);
+                                        fieldNames.addAll(cfDists);
+                                        hasAllField = fieldNames.stream().allMatch(fieldName -> ReflectUtil.hasField(reqParam.getClass(), fieldName));
+                                    }
+                                    boolean hasFileId = ObjectUtil.isNotEmpty(mainIdFields) && ObjectUtil.isNotEmpty(cfDists)
+                                            && (isMap || hasAllField);
+                                    if (!hasFileId) {
+                                        log.warn("ReqFieldReflection: Method:{} 自定义字段配置错误: 存在部分自定义的字段定义不存在:{},请检查!", methodName, mainIdFields);
+                                    } else {
+                                        Set<String> mainIdVles = new HashSet<>();
+                                        for (String mainIdField : mainIdFields) {
+                                            if (StrUtil.isEmpty(mainIdField)) continue;
+                                            if (isMap) {
+                                                mainIdVles.add(MapUtil.getStr((Map<?, ?>) reqParam, mainIdField));
+                                            } else {
+                                                mainIdVles.add(ReflectUtil.getFieldValue(reqParam, mainIdField) + "");
+                                            }
+                                        }
+                                        mainIdVles = mainIdVles.stream().filter(StrUtil::isNotEmpty).collect(Collectors.toSet());
+                                        if (CollUtil.isNotEmpty(mainIdVles)) {
+                                            String sqlFormat = reqParamsSqlTemplate.replaceAll("#\\{.*?\\}", CollUtil.join(mainIdVles, ","));
+                                            List<Map<String, Object>> maps = generalMapper.select(sqlFormat);
+                                            if (CollUtil.isEmpty(maps) || maps.size() > 1) {
+                                                log.warn("ReqFieldReflection: Method:{} sql:{} 查询结果为空或超过一条,请检查!", methodName, sqlFormat);
+                                            } else {
+                                                //填充目标字段的值
+                                                Map<String, Object> first = CollUtil.getFirst(maps);
+                                                for (String cfDist : cfDists) {
+                                                    if (first.containsKey(cfDist)) {
+                                                        log.info("ReqFieldReflection {}: 通过:{} 值:{} 自动为字段:{} 赋值为:{}", methodName, mainIdFields, mainIdVles, cfDist, first.get(cfDist));
+                                                        if (isMap) {
+                                                            ((Map) reqParam).put(cfDist, first.get(cfDist));
+                                                        } else {
+                                                            ReflectUtil.setFieldValue(reqParam, cfDist, Convert.convert(ReflectUtil.getField(reqParam.getClass(), cfDist).getType(), first.get(cfDist)));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            log.warn("ReqFieldReflection: Method:{} 没有找到请求数据中的相关主键字段或主键字段的值为空({})", methodName, mainIdFieldStr);
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    log.error("ReqFieldReflection: Method:{} 自定义字段存在异常,附属字段查询异常", methodName);
+                                    e.printStackTrace();
+                                }
                             }
                         } else {
                             log.warn("ReqFieldReflection: Method:{} 请求参数SQL模板为空,不做处理", methodName);
                         }
                     } else {
-                        log.warn("ReqFieldReflection: Method:{} 指定请求参数为null,不做处理");
+                        log.warn("ReqFieldReflection: Method:{} 指定请求参数为null,不做处理", methodName);
                     }
                 } else {
                     log.warn("ReqFieldReflection: Method:{} 请求参数索引:{} 超出范围,不做处理", methodName, reqParamsIndex);
@@ -248,8 +312,8 @@ public class FieldSqlReflectionAspect {
             return proceed;
         }
 
-        Object first = CollUtil.getFirst(rows);
-        boolean isMap = first instanceof Map;
+        Object respItemObj = CollUtil.getFirst(rows);
+        boolean isMap = respItemObj instanceof Map;
 
         //step.2
         //K:需要填充名称的id的字段名称(mainIdField) K:K:主键字段(mainIdField)对应的值(ID) K:V:主键字段(mainIdField)对应的数据对象  K:K:K:主键字段对应的表字段名称 K:K:V:主键字段对应的表字段值
@@ -275,7 +339,7 @@ public class FieldSqlReflectionAspect {
                 if (!isMap) {//校验对象中的字段是否都存在
                     List<String> fieldNames = CollUtil.newArrayList(mainIdFields);
                     fieldNames.addAll(cfDists);
-                    hasAllField = fieldNames.stream().allMatch(fieldName -> ReflectUtil.hasField(first.getClass(), fieldName));
+                    hasAllField = fieldNames.stream().allMatch(fieldName -> ReflectUtil.hasField(respItemObj.getClass(), fieldName));
                 }
                 boolean hasFileId = ObjectUtil.isNotEmpty(mainIdFields) && ObjectUtil.isNotEmpty(cfDists)
                         && (isMap || hasAllField);
@@ -342,8 +406,8 @@ public class FieldSqlReflectionAspect {
                                 }
                             }
                         } catch (Exception e) {
-                            e.printStackTrace();
                             log.error("RespFieldReflection: Method:{} 附属字段查询异常:{}", methodName, e.getMessage());
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -363,8 +427,8 @@ public class FieldSqlReflectionAspect {
                     ID_SET_FIELDS_MAP.put(mainIdField, orDefault);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
                 log.warn("RespFieldReflection: Method:{} 自定义字段存在异常,附属字段查询异常", methodName);
+                e.printStackTrace();
             }
         }
 
@@ -403,7 +467,8 @@ public class FieldSqlReflectionAspect {
                                 if (vleMap.containsKey(cfSrcVle)) {
                                     Map<String, Object> vle = vleMap.get(cfSrcVle);
                                     if (vle != null) {
-                                        ReflectUtil.setFieldValue(row, cfDist_, vle.get(cfDist_));
+                                        Object finalVle = vle.get(cfDist_);
+                                        ReflectUtil.setFieldValue(row, cfDist_, Convert.convert(ReflectUtil.getField(row.getClass(), cfDist_).getType(), finalVle));
                                     }
                                 }
                             }
@@ -445,15 +510,24 @@ public class FieldSqlReflectionAspect {
         return annotation;
     }
 }
-
 ```
 
 ## 二、使用
-### 1.在需要的方法中增加注解
+### 1.请求参数字段值映射配置，在需要的方法中增加注解
 ```java
-
+//配置释义： reqEnable请求参数映射总开关  reqParamsSqlTemplates：SQL模板：配置规则：查询条件中的projectId是源值，用它来查找结果值orgId,最终会自动的赋值到orgId字段上
+@FieldSqlReflection(reqEnable = true,reqParamsSqlTemplates = "select id,project_dept_id as orgId from zhgd_project where id = #{projectId}")
 ```
-### 2.观察日志和结果
+### 2.响应结果的字段值映射
 ```java
-
+//配置释义：respEnable响应结果参数映射总开关 respCustomFieldSpel：响应结果如果存在多级对象嵌套的情况下，嵌套对象的结构，resp是固定的字段名称，data.list是自定义的结构
+// respSqlTemplates：SQL模板：详见注解中的注释
+@FieldSqlReflection(
+    respEnable = true,
+    respCustomFieldSpel = "#resp.data.list",
+    respSqlTemplates={
+        " select id,real_name as checkUserName,real_name as auditUserName,real_name as changeHandleUserName from zhgd_user where id in (#{checkUserId,auditUserId,changeHandleUserId})"
+        ,"select zp.id,zp.name as projectName,zd.name as projectTypeName, zdc.name as countryName,zr.name as provinceName,zc.name as cityName from zhgd_project zp left join zhgd_region zr on zr.id = zp.province_id left join zhgd_region zc on zc.id = zp.city_id left join zhgd_dictionary zdc on zp.crountry_code = zdc.code left join zhgd_dictionary zd on zp.en_type = zd.code where zp.id in (#{projectId})"
+    }
+)
 ```
