@@ -67,7 +67,7 @@ image:
 
 ### 2.基础使用
 #### 1.创建word文件模板,加入数据标记
-[模板文件](/assets/files/word导出.docx)
+[模板文件](https://junnanhsia.github.io/assets/files/word导出.docx)
 
 ![文件内容示例](/assets/img/posts/word_export_template.png)
 #### 2.代码数据填充
