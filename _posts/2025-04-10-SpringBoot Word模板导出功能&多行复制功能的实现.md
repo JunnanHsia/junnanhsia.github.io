@@ -161,8 +161,25 @@ image:
 
 ### 插件
 ```java
+import cn.hutool.core.util.StrUtil;
+import com.deepoove.poi.XWPFTemplate;
+import com.deepoove.poi.data.PictureRenderData;
+import com.deepoove.poi.exception.RenderException;
+import com.deepoove.poi.policy.PictureRenderPolicy;
+import com.deepoove.poi.policy.RenderPolicy;
+import com.deepoove.poi.template.ElementTemplate;
+import com.deepoove.poi.template.run.RunTemplate;
+import com.deepoove.poi.util.TableTools;
+import lombok.SneakyThrows;
+import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /*循环复制多行的策略*/
-public static class LoopMultiRowTableRenderPolicy implements RenderPolicy {
+public class LoopMultiRowTableRenderPolicy implements RenderPolicy {
     private String itemPrefix;
     private String itemSuffix;
 
@@ -179,7 +196,7 @@ public static class LoopMultiRowTableRenderPolicy implements RenderPolicy {
         this.itemPrefix = itemPrefix;
         this.itemSuffix = itemSuffix;
     }
-    
+
     /**
      * @description 深入拷贝指定行, 返回新的行数据
      * @create: 2025/3/13 11:05
@@ -210,14 +227,14 @@ public static class LoopMultiRowTableRenderPolicy implements RenderPolicy {
                                 .replace("@", "");
                         if (rowData.containsKey(pureText)) {
                             Object rowDataItem = rowData.get(pureText);
-                            if (rowDataItem instanceof String) {
-                                r.setText((String) rowDataItem, 0);//要深入到原cell中的run替换内容才能保证样式一致
+                            if (rowDataItem instanceof Number || rowDataItem instanceof String) {
+                                r.setText(String.valueOf(rowDataItem), 0);//要深入到原cell中的run替换内容才能保证样式一致
                             }
                             if (rowDataItem instanceof PictureRenderData) {
                                 XWPFRun run = paragraph.createRun();
                                 PictureRenderData picture = (PictureRenderData) rowDataItem;
                                 PictureRenderPolicy.Helper.renderPicture(run, picture);
-                                paragraph.removeRun(i);//移除可能已经存在的图片
+                                paragraph.removeRun(0);//移除可能已经存在的图片
                             }
                         }
                     }
@@ -299,8 +316,12 @@ public static class LoopMultiRowTableRenderPolicy implements RenderPolicy {
                             List<XWPFParagraph> paragraphs = ((XWPFTableCell) tableICell).getParagraphs();
                             for (XWPFParagraph paragraph : paragraphs) {
                                 List<XWPFRun> runs = paragraph.getRuns();
-                                for (XWPFRun run : runs) {
-                                    run.setText(nText, 0);//注意在模板上,在对应的位置上使用任务文本占位,此处才能在这个pos然后进行内容的替换
+                                for (int j = 0; j < runs.size(); j++) {
+                                    if (j == 0) {
+                                        runs.get(0).setText(nText, 0);//注意在模板上,在对应的位置上使用任务文本占位,此处才能在这个pos然后进行内容的替换
+                                    } else {
+                                        runs.get(j).setText("", 0);
+                                    }
                                 }
                             }
                         }
