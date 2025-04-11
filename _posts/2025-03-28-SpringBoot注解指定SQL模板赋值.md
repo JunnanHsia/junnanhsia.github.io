@@ -10,7 +10,7 @@ mermaid: true
 math: true
 pin: false
 image:
-  path: /assets/img/posts/reflection.webp
+  path: /assets/posts/2025-03-28-SpringBoot注解指定SQL模板赋值/poster.webp
   alt: SpringBoot注解指定SQL模板给请求参数或响应结果赋值
 ---
 

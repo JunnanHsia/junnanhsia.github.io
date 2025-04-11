@@ -10,7 +10,7 @@ mermaid: true
 math: true
 pin: false
 image:
-  path: /assets/img/posts/poi_excel.png
+  path: /assets/posts/2025-03-26-SpringBoot导入Excel带图片的处理/poster.webp
   alt: SpringBoot导入Excel带图片的处理
 ---
 

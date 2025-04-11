@@ -1,5 +1,5 @@
 ---
-title: SpringBoot Word模板导出功能&多行复制功能的实现
+title: SpringBoot_Word模板导出功能_多行复制功能的实现
 description: Word模板导出框架:deepoove公司的poi-tl框架使用.以及自实现的拓展功能:Word中的表格需要进行多行的数据复制时的实现类;
 date: 2025-04-10 10:00:39 +0800
 categories: [后端, 高级操作] # 文章分类
@@ -10,8 +10,8 @@ mermaid: true # 是否支持文字生成图表的功能
 math: true # 是否支持数学工时
 pin: false # 需要指定的后为true
 image:
-  path: /assets/img/posts/SpringBoot_POI_cartoon.webp # 主图路径宽高为:1200 x 630 或者比例为: 1.91 : 1
-  alt: SpringBoot Word模板导出功能&多行复制功能的实现
+  path: /assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/poster.webp # 主图路径宽高为:1200 x 630 或者比例为: 1.91 : 1
+  alt: SpringBoot_Word模板导出功能&多行复制功能的实现
 ---
 
 ## 一.基础使用
@@ -31,7 +31,7 @@ image:
 
 #### poi-tl具体的功能
 
-| **Word模板引擎功能** | **描述   **                                                                                                              |
+| **Word模板引擎功能** | **描述**                                                                                                                 |
 | :------------------: | :----------------------------------------------------------------------------------------------------------------------- |
 |         文本         | 将标签渲染为文本                                                                                                         |
 |         图片         | 将标签渲染为图片                                                                                                         |
@@ -69,9 +69,9 @@ image:
 
 ### 2.基础使用
 #### 2.2.1 创建word文件模板,加入数据标记
-[模板文件](https://junnanhsia.github.io/assets/files/word导出.docx)
+[模板文件](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word导出.docx)
 
-![文件内容示例](/assets/img/posts/word_export_template.png)
+![文件内容示例](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_template.png)
 #### 2.2.2 代码数据填充
 ```java
     @SneakyThrows
@@ -149,15 +149,15 @@ image:
 ```
 
 #### 3.填充结果
-![填充结果](/assets/img/posts/word_export_result.png)
+![填充结果](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_result.png)
 
 更多的填充插件功能,参考官网的示例.
 
 ## 二.拓展Word中表格多行复制
 官方的拓展插件中虽然可以使用区块对,进行多行的循环,但是区块对针对表格中的部分内容(例如某两行)进行循环,则不支持. 所以此块需要使用自实现的多行表格的循环处理;
-![表格多行循环模板定义](/assets/img/posts/word_export_mutirow_template.png)
+![表格多行循环模板定义](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_mutirow_template.png)
 ### 模板内容
-![模板内容](/assets/img/posts/word_export_template1.png)
+![模板内容](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_template1.png)
 
 ### 插件
 ```java
@@ -387,4 +387,4 @@ PoitlIOUtils.closeQuietlyMulti(template, bos, out);
 ```
 
 ### 填充结果
-![填充结果](/assets/img/posts/word_export_result1.png)
+![填充结果](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_result1.png)

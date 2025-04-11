@@ -10,7 +10,7 @@ mermaid: true
 math: true
 pin: false
 image:
-  path: /assets/img/posts/java.jpg
+  path: /assets/posts/2025-03-24-SpringBoot复制resource中的资源目录到指定目录/poster.webp
   alt: SpringBoot复制resource中的资源目录到指定目录
 ---
 
