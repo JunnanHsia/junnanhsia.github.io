@@ -10,15 +10,18 @@ mermaid: true # 是否支持文字生成图表的功能
 math: true # 是否支持数学公式
 pin: false # 需要指定的后为true
 image:
-  path: /assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/poster.webp # 主图路径宽高为:1200 x 630 或者比例为: 1.91 : 1
-  alt: SpringBoot_Word模板导出功能&多行复制功能的实现
+  path: /assets/posts/2025-12-25-SpringBoot_Word转PDF功能/poster.webp # 主图路径宽高为:1200 x 630 或者比例为: 1.91 : 1
+  alt: SpringBoot_Word转PDF功能
 ---
 
 ## 一.基础使用
-### 0.简介
-> **poi-tl的word模板填充操作,详细介绍见[官方文档](https://deepoove.com/poi-tl)**,poi-tl（poi template language）是Word模板引擎，使用模板和数据创建很棒的Word文档。
+### 0.使用流程
+1. 编辑word模板,将模板上传到oss服务中,取得模板文件地址, word模板标记详见[poi-tl官方文档](https://deepoove.com/poi-tl)
+2. 项目中集成依赖,引入工具类
+3. 使用工具类操作,导出填充后的word文件,或者pdf文件
 
 ### 1.框架依赖引入
+#### 1.1依赖内容
 ```xml
 <!--word模板填充-->
 <dependency>
@@ -26,7 +29,7 @@ image:
   <artifactId>poi-tl</artifactId>
   <version>1.12.2</version>
 </dependency>
-<!--   word转pdf   -->
+<!--   word转pdf,jar包放置到resources/lib目录下   -->
 <dependency>
     <groupId>aspose</groupId>
     <artifactId>aspose-words</artifactId>
@@ -36,326 +39,904 @@ image:
     <!-- 原版最新 -->
     <!-- <systemPath>${project.basedir}/lib/aspose-words-24.6-jdk17.jar</systemPath> -->
 </dependency>
+<!--依赖中可能存在版本冲突问题,使用IDEA插件Maven Helper,排查解决-->
 ```
+#### 1.2 aspose-words框架jar包以及授权的文件
+[JAR包文件](/assets/posts/2025-12-25-SpringBoot_Word转PDF功能/aspose-words-20.12-jdk17-cracked.jar) 文件放置到项目的resources/lib目录下
+
+[JAR包文件授权文件](/assets/posts/2025-12-25-SpringBoot_Word转PDF功能/license.xml)文件放置到resources目录下
 
 ### 2.基础使用
-#### 2.2.1 创建word文件模板,加入数据标记
-[模板文件](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word导出.docx)
-
-![文件内容示例](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_template.png)
-#### 2.2.2 代码数据填充
+#### 2.1 导出工具类
 ```java
-    @SneakyThrows
-    @PostMapping("export")
-    public void export() {
-        InputStream templateIns = ResourceUtil.getStream("templates/word导出.docx");//模板文件放置在项目中的resources目录下
-        Map<String, Object> exportMap = new HashMap<>();
-        /* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓  导出数据填充 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
-        exportMap.put("title", "测试标题");
-        exportMap.put("content", "测试内容");
-        //图片填充
-        exportMap.put("img1", Pictures.ofUrl("http://www.baidu.com/img/bdlogo.png").size(20, 20).create());
-        exportMap.put("img2", Pictures.ofUrl("http://rongcloud-web.qiniudn.com/docs_demo_rongcloud_logo.png").size(20, 20).create());
-        //循环行数据填充
-        exportMap.put("students",new ArrayList<Map<String, Object>>(){{
-            add(new HashMap<String, Object>(){{
-                put("name", "张三");
-                put("gender", "男");
-                put("age", "20");
-                put("header", Pictures.ofUrl("http://www.baidu.com/img/bdlogo.png").size(20, 20).create());
-            }});
-            add(new HashMap<String, Object>(){{
-                put("name", "李四");
-                put("gender", "男");
-                put("age", "21");
-                put("header", Pictures.ofUrl("http://rongcloud-web.qiniudn.com/docs_demo_rongcloud_logo.png").size(20, 20).create());
-            }});
-        }});
-        //区块对数据填充
-        exportMap.put("person",new ArrayList<Map<String, Object>>(){{
-            add(new HashMap<String, Object>(){{
-                put("name", "张三");
-                put("gender", "男");
-                put("age", "20");
-                put("header", Pictures.ofUrl("http://www.baidu.com/img/bdlogo.png").size(20, 20).create());
-            }});
-            add(new HashMap<String, Object>(){{
-                put("name", "李四");
-                put("gender", "男");
-                put("age", "21");
-                put("header", Pictures.ofUrl("http://rongcloud-web.qiniudn.com/docs_demo_rongcloud_logo.png").size(20, 20).create());
-            }});
-        }});
-        /* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  导出数据填充 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
-        //创建行循环策略
-        LoopRowTableRenderPolicy rowTableRenderPolicy = new LoopRowTableRenderPolicy();
-        Configure configure = Configure.builder()
-                .bind("students", rowTableRenderPolicy) //循环行数据绑定
-                //区块对是默认插件,不需要主动申明
-                .build();
-        XWPFTemplate template = XWPFTemplate.compile(templateIns, configure)
-                .render(exportMap);
-        String fileName = DateUtil.format(new Date(), "yyyyMMddHHmmss") + "-导出.docx";
-        setFileName(response, fileName);
-        //写回到响应流中
-        OutputStream out = response.getOutputStream();
-        BufferedOutputStream bos = new BufferedOutputStream(out);
-        template.write(bos);
-        bos.flush();
-        out.flush();
-        PoitlIOUtils.closeQuietlyMulti(template, bos, out);
-    }
-
-    //设置下载文件名
-    @SneakyThrows
-    private void setFileName(HttpServletResponse response, String fileName) {
-        StringBuilder contentDispositionValue = new StringBuilder();
-        contentDispositionValue.append("attachment; filename=").append(URLUtil.encode(fileName, "UTF-8")).append(";").append("filename*=").append("utf-8''").append(URLUtil.encode(fileName, "UTF-8"));
-        response.addHeader("Access-Control-Allow-Origin", "*");
-        response.addHeader("Access-Control-Expose-Headers", "Content-Disposition,download-filename");
-        response.setHeader("Content-disposition", contentDispositionValue.toString());
-        response.setHeader("download-filename", URLUtil.encode(fileName, "UTF-8"));
-        response.setContentType("application/octet-stream");
-    }
-```
-
-#### 3.填充结果
-![填充结果](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_result.png)
-
-更多的填充插件功能,参考官网的示例.
-
-## 二.拓展Word中表格多行复制
-官方的拓展插件中虽然可以使用区块对,进行多行的循环,但是区块对针对表格中的部分内容(例如某两行)进行循环,则不支持. 所以此块需要使用自实现的多行表格的循环处理;
-![表格多行循环模板定义](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_mutirow_template.png)
-### 模板内容
-![模板内容](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_template1.png)
-
-### 插件
-```java
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.ReflectUtil;
+import cn.hutool.http.HttpUtil;
+import com.alibaba.fastjson.JSON;
+import com.aspose.words.Shape;
+import com.aspose.words.*;
 import com.deepoove.poi.XWPFTemplate;
-import com.deepoove.poi.data.PictureRenderData;
-import com.deepoove.poi.exception.RenderException;
-import com.deepoove.poi.policy.PictureRenderPolicy;
+import com.deepoove.poi.config.Configure;
+import com.deepoove.poi.config.ConfigureBuilder;
+import com.deepoove.poi.plugin.table.LoopRowTableRenderPolicy;
 import com.deepoove.poi.policy.RenderPolicy;
-import com.deepoove.poi.template.ElementTemplate;
+import com.deepoove.poi.template.MetaTemplate;
 import com.deepoove.poi.template.run.RunTemplate;
-import com.deepoove.poi.util.TableTools;
-import lombok.SneakyThrows;
-import org.apache.poi.xwpf.usermodel.*;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRow;
+import com.deepoove.poi.util.PoitlIOUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
-import java.util.HashMap;
+import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
-/*循环复制多行的策略*/
-public class LoopMultiRowTableRenderPolicy implements RenderPolicy {
-    private String itemPrefix;
-    private String itemSuffix;
+/**
+ * @description word, pdf操作工具类
+ **/
+@Slf4j
+public class WordPdfUtil {
 
-    private int startRowStart;//起始行
-    private int startRowEnd;//结束行
-    private int rowDiff;//行数差异
+  public static void main(String[] args) {
+    //测试
+    //模板1:
+    String templateName = "1.机械设备买卖合同范本修订（修订）.docx";
+    String templateUrl = "https://stage-minio1-view-dic.diccp.com/ctcemti-ggc-default/word_template_jx_1.docx";
+    HashMap<String, Object> params = new HashMap<String, Object>() {{
+      put("number", "1123");
+      put("name", "测试工程");
+      put("buy", "张三");
+      put("sale", "天恩科技");
+      put("location", "北京市海淀区");
+      put("year", "2025");
+      put("month", "9");
+      put("day", "9");
+      put("LoopRow_Devices", new ArrayList<Map<String, Object>>() {{
+        add(new HashMap<String, Object>() {{
+          put("name", "设备1");
+          put("xh", "型号xx");
+          put("unit", "个");
+          put("num", "1");
+          put("noTaxPrice", "11");
+          put("hasTaxPrice", "22");
+          put("noTaxAll", "33");
+          put("factory", "天恩");
+          put("remark", "无备注");
+        }});
+        add(new HashMap<String, Object>() {{
+          put("name", "设备2");
+          put("xh", "型号2xx");
+          put("unit", "个");
+          put("num", "2");
+          put("noTaxPrice", "22");
+          put("hasTaxPrice", "33");
+          put("noTaxAll", "55");
+          put("factory", "天恩2");
+          put("remark", "无备注1");
+        }});
+      }});
+      put("zzTax", "123");
+      put("hasTaxAll", "456");
+      //小计类
+      put("xhXj", "11");
+      put("unitXj", "22");
+      put("numXj", "33");
+      put("noTaxPriceXj", "44");
+      put("hasTaxPriceXj", "55");
+      put("noTaxAllXj", "66");
+    }};
+    String fileUrl = inflateWordTemplate(templateUrl, params, WORD_TRANS_TYPE.WORD);
+    log.info("模板:{} 文件路径:{}", templateName, fileUrl);
+    fileUrl = inflateWordTemplate(templateUrl, params, WORD_TRANS_TYPE.PDF);
+    log.info("模板:{} 文件路径:{}", templateName, fileUrl);
 
 
-    public LoopMultiRowTableRenderPolicy() {
-        this("[", "]");
+  }
+
+  public enum WORD_TRANS_TYPE {
+    WORD, PDF
+  }
+
+  /**
+   * @description 特殊的渲染策略的key前缀和对应的渲染策略类, TODO 如果有特殊的格式类型,需要在此处进行追加;
+   **/
+  public static final Map<String, Class<? extends RenderPolicy>> SPECIAL_KEY_MAP_CLASS = new HashMap<String, Class<? extends RenderPolicy>>() {{
+    put("LoopRow", LoopRowTableRenderPolicy.class);
+  }};
+
+  /**
+   * @description: 填充word模板文件参数
+   * @author: Jeff@夏俊男
+   * @date: 2025/9/8 09:58
+   * @Param templateUrl: 模板文件地址
+   * @Param params: 模板文件参数
+   * @Param type: 输出文件类型枚举,WORD,PDF
+   * @return: java.lang.String 填充了模板参数的文件路径
+   **/
+  public static String inflateWordTemplate(String templateUrl, Map<String, Object> params, WORD_TRANS_TYPE type) {
+    //参数校验
+    if (templateUrl == null || templateUrl.isEmpty() || (!HttpUtil.isHttp(templateUrl) && !HttpUtil.isHttps(templateUrl))) {
+      log.error("模板文件地址:{} 格式不正确!", templateUrl);
+      throw new IllegalArgumentException("模板文件地址格式不正确!");
     }
-
-    public LoopMultiRowTableRenderPolicy(String itemPrefix, String itemSuffix) {
-        this.itemPrefix = itemPrefix;
-        this.itemSuffix = itemSuffix;
+    if (MapUtil.isEmpty(params)) {
+      log.error("模板文件参数:{} 为空!", params);
+      throw new IllegalArgumentException("模板文件参数为空!");
     }
-
-    /**
-     * @description 深入拷贝指定行, 返回新的行数据
-     * @create: 2025/3/13 11:05
-     **/
-    @SneakyThrows
-    private XWPFTableRow deepCloneRow(XWPFTable table, XWPFTableRow row) {
-        CTRow ctrow = CTRow.Factory.parse(row.getCtRow().newInputStream());//重点行
-        XWPFTableRow newRow = new XWPFTableRow(ctrow, table);
-        return newRow;
+    /* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ word模板数据填充 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
+    String timeStr = DateUtil.date().toString("yyyyMMddHHmmssSSS");
+    File templateFile = new File(FileUtil.getTmpDir(), "Template_" + timeStr + ".docx");
+    long l = HttpUtil.downloadFile(templateUrl, templateFile.getAbsolutePath());
+    if (l == 0) {
+      log.error("模板文件:{} 下载失败!", templateUrl);
+      throw new IllegalArgumentException("模板文件下载失败!");
     }
-
-    /**
-     * @description 根据行的模板标记, 填充数据
-     * @create: 2025/4/10 17:13
-     **/
-    @SneakyThrows
-    private void fillRowData(XWPFTableRow row, Map<String, Object> rowData) {
-        List<XWPFTableCell> tableCells = row.getTableCells();// 在新增的行上面创建cell
-        for (XWPFTableCell cell : tableCells) {
-            for (XWPFParagraph paragraph : cell.getParagraphs()) {
-                List<XWPFRun> runs = paragraph.getRuns();
-                for (int i = 0; i < runs.size(); i++) {
-                    XWPFRun r = runs.get(i);
-                    String text = r.getText(0);
-                    if (StrUtil.isNotEmpty(text)) {
-                        String pureText = text.replace(itemPrefix, "")
-                                .replace(itemSuffix, "")
-                                .replace("@", "");
-                        if (rowData.containsKey(pureText)) {
-                            Object rowDataItem = rowData.get(pureText);
-                            if (rowDataItem instanceof Number || rowDataItem instanceof String) {
-                                r.setText(String.valueOf(rowDataItem), 0);//要深入到原cell中的run替换内容才能保证样式一致
-                            }
-                            if (rowDataItem instanceof PictureRenderData) {
-                                XWPFRun run = paragraph.createRun();
-                                PictureRenderData picture = (PictureRenderData) rowDataItem;
-                                PictureRenderPolicy.Helper.renderPicture(run, picture);
-                                paragraph.removeRun(0);//移除可能已经存在的图片
-                            }
-                        }
-                    }
-                }
-            }
+    File wordFile = new File(FileUtil.getTmpDir(), "Word_" + timeStr + ".docx");
+    try {
+      ConfigureBuilder builder = Configure.builder();
+      // 遍历给定的模板参数,如果存在预设的特定开头的key,则使用对应的预设策略进行渲染
+      for (Map.Entry<String, Object> stringObjectEntry : params.entrySet()) {
+        String key = stringObjectEntry.getKey();
+        for (Map.Entry<String, Class<? extends RenderPolicy>> stringClassEntry : SPECIAL_KEY_MAP_CLASS.entrySet()) {
+          String configureKey = stringClassEntry.getKey();
+          if (key.startsWith(configureKey)) {
+            Class<? extends RenderPolicy> value = stringClassEntry.getValue();
+            RenderPolicy renderPolicy = ReflectUtil.newInstance(value);
+            log.info("动态的绑定模板:{} 参数:{} 策略为:{}", templateUrl, key, renderPolicy.getClass().getName());
+            builder.bind(key, renderPolicy);
+            break;
+          }
         }
+      }
+      //创建行循环策略
+      Configure configure = builder.build();
+      XWPFTemplate template = XWPFTemplate.compile(templateFile, configure)
+              .render(params);
+      //获取模板中所有的模板标签,用于和参数进行比对,给出提示,不做具体处理;
+      List<MetaTemplate> elementTemplates = template.getElementTemplates();
+      if (CollUtil.isNotEmpty(elementTemplates)) {
+        Set<String> templateTags = elementTemplates.stream().filter(it -> it instanceof RunTemplate).map(it -> ((RunTemplate) it).getTagName()).collect(Collectors.toSet());
+        if (templateTags.size() != params.size()) {
+          Set<String> keys = params.keySet();
+          //取templateTags中存在的,但是keys中不存在的元素
+          Set<String> diff = new HashSet<>(templateTags);
+          diff.removeAll(keys);
+          log.error("模板:{} 中缺少如下字段值:{} 请检查传参!", templateUrl, JSON.toJSONString(diff));
+        }
+      }
+      template.writeAndClose(new FileOutputStream(wordFile));
+      PoitlIOUtils.closeQuietlyMulti(template);//关闭模板流
+    } catch (Exception e) {
+      log.error("word模板数据填充异常:{}", e.getMessage());
+      throw new RuntimeException("word模板数据填充异常:" + e.getMessage());
     }
+    /* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ word模板数据填充 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
 
-    @Override
-    public void render(ElementTemplate eleTemplate, Object data, XWPFTemplate template) {
-        RunTemplate runTemplate = (RunTemplate) eleTemplate;
-        XWPFRun run = runTemplate.getRun();
+    /* ↓↓↓↓↓↓ word转PDF ↓↓↓↓↓↓ */
+    if (type == WORD_TRANS_TYPE.PDF) {
+      try {
+        File pdfFile = new File(FileUtil.getTmpDir(), "Pdf_" + timeStr + ".pdf");
+        docxToPdf(wordFile, pdfFile);
+        wordFile = pdfFile;
+      } catch (Exception e) {
+        log.error("word转pdf异常:{}", e.getMessage());
+        throw new RuntimeException("word转pdf异常:" + e.getMessage());
+      }
+    }
+    /* ↑↑↑↑↑↑ word转PDF ↑↑↑↑↑↑ */
+
+    return wordFile.getAbsolutePath();
+  }
+
+
+  /* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ word转pdf操作相关 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
+  public static boolean getLicense() {
+    boolean result = false;
+    InputStream is = null;
+    try {
+      Resource resource = new ClassPathResource("license.xml"); // xml文件地址
+      is = resource.getInputStream();
+      License aposeLic = new License();
+      aposeLic.setLicense(is);
+      result = true;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (is != null) {
         try {
-            if (!TableTools.isInsideTable(run)) {
-                throw new IllegalStateException(
-                        "The template tag " + runTemplate.getSource() + " must be inside a table");
-            }
-            XWPFTableCell startTagCell = (XWPFTableCell) ((XWPFParagraph) run.getParent()).getBody();
-            XWPFTable table = startTagCell.getTableRow().getTable();
-            run.setText("", 0);
-
-            startRowStart = getTemplateRowIndex(startTagCell);//开始行的索引
-            // 找到结束行的索引
-            int templateRowIndexStartEnd = getTemplateRowIndexByTemplateTag(table, startRowStart, "↑" + runTemplate.getTagName(), true);
-            if (templateRowIndexStartEnd == -1) {
-                throw new IllegalStateException(
-                        "The template end tag " + runTemplate.getSource() + " not found in table");
-            }
-
-            /* ↓↓↓↓↓↓ 模板行数据填充 ↓↓↓↓↓↓ */
-            rowDiff = templateRowIndexStartEnd - startRowStart + 1;
-            Map<Integer, XWPFTableRow> templateRowsMap = new HashMap<>();
-            for (int i = 0; i < rowDiff; i++) {
-                templateRowsMap.put(i, table.getRow(startRowStart + i));
-            }
-            /* ↑↑↑↑↑↑ 模板行数据填充 ↑↑↑↑↑↑ */
-            List<Map<String, Object>> dataMaps = (List<Map<String, Object>>) data;
-            for (int i = 0; i < dataMaps.size(); i++) {
-                Map<String, Object> rowData = dataMaps.get(i);
-                //需要复制的具体行
-                for (int j = 0; j < rowDiff; j++) {
-                    XWPFTableRow templateRow = templateRowsMap.get(j);
-                    //复制模板行
-                    if (i != dataMaps.size() - 1) {
-                        XWPFTableRow copyRow = deepCloneRow(table, templateRow);
-                        fillRowData(copyRow, dataMaps.get(i + 1));
-                        table.addRow(copyRow, startRowStart + ((i + 1) * rowDiff) + j);
-                    }
-                    //填充数据
-                    if (i == 0) {
-                        // 填充templateRow
-                        fillRowData(templateRow, rowData);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            throw new RenderException("HackLoopTable for " + eleTemplate + "error: " + e.getMessage(), e);
+          is.close();
+        } catch (IOException e) {
+          e.printStackTrace();
         }
+      }
     }
+    return result;
+  }
 
-    private int getTemplateRowIndex(XWPFTableCell tagCell) {
-        XWPFTableRow tagRow = tagCell.getTableRow();
-        return getRowIndex(tagRow);
-    }
+  public static boolean docxToPdf(File inPath, File outPath, String... watermarkText) {
+    return docxToPdf(inPath.getPath(), outPath.getPath(), watermarkText);
+  }
 
-    private int getTemplateRowIndexByTemplateTag(XWPFTable table, int templateRowIndexStart, String templateTag, boolean clearTag) {
-        int index = -1;
-        List<XWPFTableRow> rows = table.getRows();
-        for (int i = templateRowIndexStart; i < rows.size(); i++) {
-            XWPFTableRow xwpfTableRow = rows.get(i);
-            List<ICell> tableICells = xwpfTableRow.getTableICells();
-            for (ICell tableICell : tableICells) {
-                if (tableICell instanceof XWPFTableCell) {
-                    String text = ((XWPFTableCell) tableICell).getText();
-                    if (text.contains(templateTag)) {
-                        //清空模板标记的内容
-                        if (clearTag) {
-                            String nText = text.replace("{{" + templateTag + "}}", "");
-                            List<XWPFParagraph> paragraphs = ((XWPFTableCell) tableICell).getParagraphs();
-                            for (XWPFParagraph paragraph : paragraphs) {
-                                List<XWPFRun> runs = paragraph.getRuns();
-                                for (int j = 0; j < runs.size(); j++) {
-                                    if (j == 0) {
-                                        runs.get(0).setText(nText, 0);//注意在模板上,在对应的位置上使用任务文本占位,此处才能在这个pos然后进行内容的替换
-                                    } else {
-                                        runs.get(j).setText("", 0);
-                                    }
-                                }
-                            }
-                        }
-                        return i;
-                    }
-                }
-            }
+  public static boolean docxToPdf(String inPath, String outPath, String... watermarkText) {
+    // if (!getLicense()) { // 验证License 若不验证则转化出的pdf文档会有水印产生 //  破解版本的话,则不需要此;
+    //     return false;
+    // }
+    FileOutputStream os = null;
+    try {
+      long old = System.currentTimeMillis();
+      File file = new File(outPath); // 新建一个空白pdf文档
+      os = new FileOutputStream(file);
+      //默认中文的加载配置
+      LoadOptions lo = new LoadOptions();
+      lo.getLanguagePreferences().setDefaultEditingLanguage(EditingLanguage.CHINESE_PRC);
+      Document document = new Document(inPath, lo); // Address是将要被转化的word文档
+      TableCollection tables = document.getFirstSection().getBody().getTables();
+      for (Table table : tables) {
+        RowCollection rows = table.getRows();
+        table.setAllowAutoFit(false);
+        for (Row row : rows) {
+          CellCollection cells = row.getCells();
+          for (Cell cell : cells) {
+            CellFormat cellFormat = cell.getCellFormat();
+            cellFormat.setFitText(false);
+            cellFormat.setWrapText(true);
+          }
         }
-        return index;
-    }
+      }
+      //设置上边距，下边距. 上下边距设置成最小,防止出现跨页的情况;
+      DocumentBuilder builder = new DocumentBuilder(document);
+      builder.getPageSetup().setTopMargin(0);
+      builder.getPageSetup().setBottomMargin(0);
+      // builder.getPageSetup().setLeftMargin(1);
+      // builder.getPageSetup().setRightMargin(1);
+      document = builder.getDocument();
 
-    private int getRowIndex(XWPFTableRow row) {
-        List<XWPFTableRow> rows = row.getTable().getRows();
-        return rows.indexOf(row);
-    }
+      //插入水印
+      if (watermarkText.length > 0) {
+        for (String waterMark : watermarkText) {
+          insertWatermarkText(document, waterMark);
+        }
+      }
 
+      //在使用中发现 apose 对 word 文档转换 PDF 操作中会出现将单页分成两页的情况。仔细分析后发现是因为 word 文档在编辑的时候是采用的多页编辑。页面效果是单页，可是在 apose 将 word 文档转为 pdf 后就变成了两页。所以要新生成一个 word 文档并保留原 word 文档的样式，问题解决。
+      Document documentN = new Document();//新建一个空白pdf文档
+      documentN.removeAllChildren();
+      documentN.appendDocument(document, ImportFormatMode.USE_DESTINATION_STYLES);//保留样式
+
+      PdfSaveOptions saveOptions = new PdfSaveOptions();
+      // saveOptions.setExportDocumentStructure(true);//有文档结构的pdf//文档可以复制修改,不推荐
+      // saveOptions.setEmbedFullFonts(true);//字体嵌入//文件会变的很大,不推荐
+      // MetafileRenderingOptions metafileRenderingOptions = new MetafileRenderingOptions();
+      // metafileRenderingOptions.setScaleWmfFontsToMetafileSize(false);
+      // saveOptions.setMetafileRenderingOptions(metafileRenderingOptions);
+      documentN.save(os, saveOptions);// 全面支持DOC, DOCX, OOXML, RTF HTML, OpenDocument, PDF,
+// EPUB, XPS, SWF 相互转换
+      long now = System.currentTimeMillis();
+      System.out.println("pdf转换成功，共耗时：" + ((now - old) / 1000.0) + "秒"); // 转化用时
+    } catch (Exception e) {
+      e.printStackTrace();
+      return false;
+    } finally {
+      if (os != null) {
+        try {
+          os.flush();
+          os.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 为word文档添加水印
+   *
+   * @param doc           word文档模型
+   * @param watermarkText 需要添加的水印字段
+   * @throws Exception
+   */
+  public static void insertWatermarkText(Document doc, String watermarkText) throws Exception {
+    Shape watermark = new Shape(doc, ShapeType.TEXT_PLAIN_TEXT);
+    //水印内容
+    watermark.getTextPath().setText(watermarkText);
+    //水印字体
+    TextPath textPath = watermark.getTextPath();
+    textPath.setFontFamily("宋体");
+    // textPath.setSize(16);
+    //水印宽度
+    watermark.setWidth(400);
+    //水印高度
+    watermark.setHeight(120);
+    //旋转水印
+    watermark.setRotation(-40);
+    //水印颜色 浅灰色
+    watermark.getFill().setColor(new Color(242, 242, 242));
+    watermark.setStrokeColor(new Color(242, 242, 242));
+    //设置相对水平位置
+    watermark.setRelativeHorizontalPosition(RelativeHorizontalPosition.PAGE);
+    //设置相对垂直位置
+    watermark.setRelativeVerticalPosition(RelativeVerticalPosition.PAGE);
+    //设置包装类型
+    watermark.setWrapType(WrapType.NONE);
+    //设置垂直对齐
+    watermark.setVerticalAlignment(VerticalAlignment.CENTER);
+    //设置文本水平对齐方式
+    watermark.setHorizontalAlignment(HorizontalAlignment.CENTER);
+    Paragraph watermarkPara = new Paragraph(doc);
+    watermarkPara.appendChild(watermark);
+    for (Section sect : doc.getSections()) {
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_PRIMARY);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_FIRST);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_EVEN);
+    }
+    System.out.println("Watermark Set");
+  }
+
+  /**
+   * 在页眉中插入水印
+   *
+   * @param watermarkPara
+   * @param sect
+   * @param headerType
+   * @throws Exception
+   */
+  private static void insertWatermarkIntoHeader(Paragraph watermarkPara, Section sect, int headerType) throws Exception {
+    HeaderFooter header = sect.getHeadersFooters().getByHeaderFooterType(headerType);
+    if (header == null) {
+      header = new HeaderFooter(sect.getDocument(), headerType);
+      sect.getHeadersFooters().add(header);
+    }
+    header.appendChild(watermarkPara.deepClone(true));
+  }
+
+  /**
+   * 设置水印属性
+   *
+   * @param doc
+   * @param wmText
+   * @param left
+   * @param top
+   * @return
+   * @throws Exception
+   */
+  public static Shape ShapeMore(Document doc, String wmText, double left, double top) throws Exception {
+//        Shape waterShape = new Shape(doc, ShapeType.TEXT_PLAIN_TEXT);
+    Shape waterShape = new Shape(doc, ShapeType.IMAGE);
+    waterShape.getImageData().setImage(wmText);
+    waterShape.setWidth(100.0);
+    waterShape.setHeight(100.0);
+    waterShape.setRotation(0);
+    waterShape.setFilled(true);
+//        //水印内容
+//        waterShape.getTextPath().setText(wmText);
+//        //水印字体
+//        waterShape.getTextPath().setFontFamily("宋体");
+//        //水印宽度
+//        waterShape.setWidth(40);
+//        //水印高度
+//        waterShape.setHeight(13);
+//        //旋转水印
+//        waterShape.setRotation(-40);
+    //水印颜色 浅灰色
+        /*waterShape.getFill().setColor(Color.lightGray);
+        waterShape.setStrokeColor(Color.lightGray);*/
+    waterShape.setStrokeColor(new Color(210, 210, 210));
+    //将水印放置在页面中心
+    waterShape.setLeft(left);
+    waterShape.setTop(top);
+    //设置包装类型
+    waterShape.setWrapType(WrapType.NONE);
+    return waterShape;
+  }
+
+  /**
+   * 插入多个水印
+   *
+   * @param mdoc
+   * @param wmText
+   * @throws Exception
+   */
+  public static void WaterMarkMore(Document mdoc, String wmText) throws Exception {
+    Paragraph watermarkPara = new Paragraph(mdoc);
+//        for (int j = 0; j < 500; j = j + 100)
+//        {
+//            for (int i = 0; i < 700; i = i + 85)
+//            {
+//                Shape waterShape = ShapeMore(mdoc, wmText, j, i);
+//                watermarkPara.appendChild(waterShape);
+//            }
+//        }
+    Shape waterShape = ShapeMore(mdoc, wmText, 155, 300);
+    watermarkPara.appendChild(waterShape);
+    for (Section sect : mdoc.getSections()) {
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_PRIMARY);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_FIRST);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_EVEN);
+    }
+  }
+  /* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ word转pdf操作相关 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
+}
+import cn.hutool.core.collection.CollUtil;
+        import cn.hutool.core.date.DateUtil;
+        import cn.hutool.core.io.FileUtil;
+        import cn.hutool.core.map.MapUtil;
+        import cn.hutool.core.util.ReflectUtil;
+        import cn.hutool.http.HttpUtil;
+        import com.alibaba.fastjson.JSON;
+        import com.aspose.words.Shape;
+        import com.aspose.words.*;
+        import com.deepoove.poi.XWPFTemplate;
+        import com.deepoove.poi.config.Configure;
+        import com.deepoove.poi.config.ConfigureBuilder;
+        import com.deepoove.poi.plugin.table.LoopRowTableRenderPolicy;
+        import com.deepoove.poi.policy.RenderPolicy;
+        import com.deepoove.poi.template.MetaTemplate;
+        import com.deepoove.poi.template.run.RunTemplate;
+        import com.deepoove.poi.util.PoitlIOUtils;
+        import lombok.extern.slf4j.Slf4j;
+        import org.springframework.core.io.ClassPathResource;
+        import org.springframework.core.io.Resource;
+
+        import java.awt.*;
+        import java.io.File;
+        import java.io.FileOutputStream;
+        import java.io.IOException;
+        import java.io.InputStream;
+        import java.util.*;
+        import java.util.List;
+        import java.util.stream.Collectors;
+
+/**
+ * @description word, pdf操作工具类
+ **/
+@Slf4j
+public class WordPdfUtil {
+
+  public static void main(String[] args) {
+    //测试
+    //模板1:
+    String templateName = "1.机械设备买卖合同范本修订（修订）.docx";
+    String templateUrl = "https://stage-minio1-view-dic.diccp.com/ctcemti-ggc-default/word_template_jx_1.docx";
+    HashMap<String, Object> params = new HashMap<String, Object>() {{
+      put("number", "1123");
+      put("name", "测试工程");
+      put("buy", "张三");
+      put("sale", "天恩科技");
+      put("location", "北京市海淀区");
+      put("year", "2025");
+      put("month", "9");
+      put("day", "9");
+      put("LoopRow_Devices", new ArrayList<Map<String, Object>>() {{
+        add(new HashMap<String, Object>() {{
+          put("name", "设备1");
+          put("xh", "型号xx");
+          put("unit", "个");
+          put("num", "1");
+          put("noTaxPrice", "11");
+          put("hasTaxPrice", "22");
+          put("noTaxAll", "33");
+          put("factory", "天恩");
+          put("remark", "无备注");
+        }});
+        add(new HashMap<String, Object>() {{
+          put("name", "设备2");
+          put("xh", "型号2xx");
+          put("unit", "个");
+          put("num", "2");
+          put("noTaxPrice", "22");
+          put("hasTaxPrice", "33");
+          put("noTaxAll", "55");
+          put("factory", "天恩2");
+          put("remark", "无备注1");
+        }});
+      }});
+      put("zzTax", "123");
+      put("hasTaxAll", "456");
+      //小计类
+      put("xhXj", "11");
+      put("unitXj", "22");
+      put("numXj", "33");
+      put("noTaxPriceXj", "44");
+      put("hasTaxPriceXj", "55");
+      put("noTaxAllXj", "66");
+    }};
+    String fileUrl = inflateWordTemplate(templateUrl, params, WORD_TRANS_TYPE.WORD);
+    log.info("模板:{} 文件路径:{}", templateName, fileUrl);
+    fileUrl = inflateWordTemplate(templateUrl, params, WORD_TRANS_TYPE.PDF);
+    log.info("模板:{} 文件路径:{}", templateName, fileUrl);
+
+
+  }
+
+  public enum WORD_TRANS_TYPE {
+    WORD, PDF
+  }
+
+  /**
+   * @description 特殊的渲染策略的key前缀和对应的渲染策略类, TODO 如果有特殊的格式类型,需要在此处进行追加;
+   **/
+  public static final Map<String, Class<? extends RenderPolicy>> SPECIAL_KEY_MAP_CLASS = new HashMap<String, Class<? extends RenderPolicy>>() {{
+    put("LoopRow", LoopRowTableRenderPolicy.class);
+  }};
+
+  /**
+   * @description: 填充word模板文件参数
+   * @Param templateUrl: 模板文件地址
+   * @Param params: 模板文件参数
+   * @Param type: 输出文件类型枚举,WORD,PDF
+   * @return: java.lang.String 填充了模板参数的文件路径
+   **/
+  public static String inflateWordTemplate(String templateUrl, Map<String, Object> params, WORD_TRANS_TYPE type) {
+    //参数校验
+    if (templateUrl == null || templateUrl.isEmpty() || (!HttpUtil.isHttp(templateUrl) && !HttpUtil.isHttps(templateUrl))) {
+      log.error("模板文件地址:{} 格式不正确!", templateUrl);
+      throw new IllegalArgumentException("模板文件地址格式不正确!");
+    }
+    if (MapUtil.isEmpty(params)) {
+      log.error("模板文件参数:{} 为空!", params);
+      throw new IllegalArgumentException("模板文件参数为空!");
+    }
+    /* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ word模板数据填充 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
+    String timeStr = DateUtil.date().toString("yyyyMMddHHmmssSSS");
+    File templateFile = new File(FileUtil.getTmpDir(), "Template_" + timeStr + ".docx");
+    long l = HttpUtil.downloadFile(templateUrl, templateFile.getAbsolutePath());
+    if (l == 0) {
+      log.error("模板文件:{} 下载失败!", templateUrl);
+      throw new IllegalArgumentException("模板文件下载失败!");
+    }
+    File wordFile = new File(FileUtil.getTmpDir(), "Word_" + timeStr + ".docx");
+    try {
+      ConfigureBuilder builder = Configure.builder();
+      // 遍历给定的模板参数,如果存在预设的特定开头的key,则使用对应的预设策略进行渲染
+      for (Map.Entry<String, Object> stringObjectEntry : params.entrySet()) {
+        String key = stringObjectEntry.getKey();
+        for (Map.Entry<String, Class<? extends RenderPolicy>> stringClassEntry : SPECIAL_KEY_MAP_CLASS.entrySet()) {
+          String configureKey = stringClassEntry.getKey();
+          if (key.startsWith(configureKey)) {
+            Class<? extends RenderPolicy> value = stringClassEntry.getValue();
+            RenderPolicy renderPolicy = ReflectUtil.newInstance(value);
+            log.info("动态的绑定模板:{} 参数:{} 策略为:{}", templateUrl, key, renderPolicy.getClass().getName());
+            builder.bind(key, renderPolicy);
+            break;
+          }
+        }
+      }
+      //创建行循环策略
+      Configure configure = builder.build();
+      XWPFTemplate template = XWPFTemplate.compile(templateFile, configure)
+              .render(params);
+      //获取模板中所有的模板标签,用于和参数进行比对,给出提示,不做具体处理;
+      List<MetaTemplate> elementTemplates = template.getElementTemplates();
+      if (CollUtil.isNotEmpty(elementTemplates)) {
+        Set<String> templateTags = elementTemplates.stream().filter(it -> it instanceof RunTemplate).map(it -> ((RunTemplate) it).getTagName()).collect(Collectors.toSet());
+        if (templateTags.size() != params.size()) {
+          Set<String> keys = params.keySet();
+          //取templateTags中存在的,但是keys中不存在的元素
+          Set<String> diff = new HashSet<>(templateTags);
+          diff.removeAll(keys);
+          log.error("模板:{} 中缺少如下字段值:{} 请检查传参!", templateUrl, JSON.toJSONString(diff));
+        }
+      }
+      template.writeAndClose(new FileOutputStream(wordFile));
+      PoitlIOUtils.closeQuietlyMulti(template);//关闭模板流
+    } catch (Exception e) {
+      log.error("word模板数据填充异常:{}", e.getMessage());
+      throw new RuntimeException("word模板数据填充异常:" + e.getMessage());
+    }
+    /* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ word模板数据填充 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
+
+    /* ↓↓↓↓↓↓ word转PDF ↓↓↓↓↓↓ */
+    if (type == WORD_TRANS_TYPE.PDF) {
+      try {
+        File pdfFile = new File(FileUtil.getTmpDir(), "Pdf_" + timeStr + ".pdf");
+        docxToPdf(wordFile, pdfFile);
+        wordFile = pdfFile;
+      } catch (Exception e) {
+        log.error("word转pdf异常:{}", e.getMessage());
+        throw new RuntimeException("word转pdf异常:" + e.getMessage());
+      }
+    }
+    /* ↑↑↑↑↑↑ word转PDF ↑↑↑↑↑↑ */
+
+    return wordFile.getAbsolutePath();
+  }
+
+
+  /* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ word转pdf操作相关 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
+  public static boolean getLicense() {
+    boolean result = false;
+    InputStream is = null;
+    try {
+      Resource resource = new ClassPathResource("license.xml"); // xml文件地址
+      is = resource.getInputStream();
+      License aposeLic = new License();
+      aposeLic.setLicense(is);
+      result = true;
+    } catch (Exception e) {
+      e.printStackTrace();
+    } finally {
+      if (is != null) {
+        try {
+          is.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    return result;
+  }
+
+  public static boolean docxToPdf(File inPath, File outPath, String... watermarkText) {
+    return docxToPdf(inPath.getPath(), outPath.getPath(), watermarkText);
+  }
+
+  public static boolean docxToPdf(String inPath, String outPath, String... watermarkText) {
+    // if (!getLicense()) { // 验证License 若不验证则转化出的pdf文档会有水印产生 //  破解版本的话,则不需要此;
+    //     return false;
+    // }
+    FileOutputStream os = null;
+    try {
+      long old = System.currentTimeMillis();
+      File file = new File(outPath); // 新建一个空白pdf文档
+      os = new FileOutputStream(file);
+      //默认中文的加载配置
+      LoadOptions lo = new LoadOptions();
+      lo.getLanguagePreferences().setDefaultEditingLanguage(EditingLanguage.CHINESE_PRC);
+      Document document = new Document(inPath, lo); // Address是将要被转化的word文档
+      TableCollection tables = document.getFirstSection().getBody().getTables();
+      for (Table table : tables) {
+        RowCollection rows = table.getRows();
+        table.setAllowAutoFit(false);
+        for (Row row : rows) {
+          CellCollection cells = row.getCells();
+          for (Cell cell : cells) {
+            CellFormat cellFormat = cell.getCellFormat();
+            cellFormat.setFitText(false);
+            cellFormat.setWrapText(true);
+          }
+        }
+      }
+      //设置上边距，下边距. 上下边距设置成最小,防止出现跨页的情况;
+      DocumentBuilder builder = new DocumentBuilder(document);
+      builder.getPageSetup().setTopMargin(0);
+      builder.getPageSetup().setBottomMargin(0);
+      // builder.getPageSetup().setLeftMargin(1);
+      // builder.getPageSetup().setRightMargin(1);
+      document = builder.getDocument();
+
+      //插入水印
+      if (watermarkText.length > 0) {
+        for (String waterMark : watermarkText) {
+          insertWatermarkText(document, waterMark);
+        }
+      }
+
+      //在使用中发现 apose 对 word 文档转换 PDF 操作中会出现将单页分成两页的情况。仔细分析后发现是因为 word 文档在编辑的时候是采用的多页编辑。页面效果是单页，可是在 apose 将 word 文档转为 pdf 后就变成了两页。所以要新生成一个 word 文档并保留原 word 文档的样式，问题解决。
+      Document documentN = new Document();//新建一个空白pdf文档
+      documentN.removeAllChildren();
+      documentN.appendDocument(document, ImportFormatMode.USE_DESTINATION_STYLES);//保留样式
+
+      PdfSaveOptions saveOptions = new PdfSaveOptions();
+      // saveOptions.setExportDocumentStructure(true);//有文档结构的pdf//文档可以复制修改,不推荐
+      // saveOptions.setEmbedFullFonts(true);//字体嵌入//文件会变的很大,不推荐
+      // MetafileRenderingOptions metafileRenderingOptions = new MetafileRenderingOptions();
+      // metafileRenderingOptions.setScaleWmfFontsToMetafileSize(false);
+      // saveOptions.setMetafileRenderingOptions(metafileRenderingOptions);
+      documentN.save(os, saveOptions);// 全面支持DOC, DOCX, OOXML, RTF HTML, OpenDocument, PDF,
+// EPUB, XPS, SWF 相互转换
+      long now = System.currentTimeMillis();
+      System.out.println("pdf转换成功，共耗时：" + ((now - old) / 1000.0) + "秒"); // 转化用时
+    } catch (Exception e) {
+      e.printStackTrace();
+      return false;
+    } finally {
+      if (os != null) {
+        try {
+          os.flush();
+          os.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 为word文档添加水印
+   *
+   * @param doc           word文档模型
+   * @param watermarkText 需要添加的水印字段
+   * @throws Exception
+   */
+  public static void insertWatermarkText(Document doc, String watermarkText) throws Exception {
+    Shape watermark = new Shape(doc, ShapeType.TEXT_PLAIN_TEXT);
+    //水印内容
+    watermark.getTextPath().setText(watermarkText);
+    //水印字体
+    TextPath textPath = watermark.getTextPath();
+    textPath.setFontFamily("宋体");
+    // textPath.setSize(16);
+    //水印宽度
+    watermark.setWidth(400);
+    //水印高度
+    watermark.setHeight(120);
+    //旋转水印
+    watermark.setRotation(-40);
+    //水印颜色 浅灰色
+    watermark.getFill().setColor(new Color(242, 242, 242));
+    watermark.setStrokeColor(new Color(242, 242, 242));
+    //设置相对水平位置
+    watermark.setRelativeHorizontalPosition(RelativeHorizontalPosition.PAGE);
+    //设置相对垂直位置
+    watermark.setRelativeVerticalPosition(RelativeVerticalPosition.PAGE);
+    //设置包装类型
+    watermark.setWrapType(WrapType.NONE);
+    //设置垂直对齐
+    watermark.setVerticalAlignment(VerticalAlignment.CENTER);
+    //设置文本水平对齐方式
+    watermark.setHorizontalAlignment(HorizontalAlignment.CENTER);
+    Paragraph watermarkPara = new Paragraph(doc);
+    watermarkPara.appendChild(watermark);
+    for (Section sect : doc.getSections()) {
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_PRIMARY);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_FIRST);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_EVEN);
+    }
+    System.out.println("Watermark Set");
+  }
+
+  /**
+   * 在页眉中插入水印
+   *
+   * @param watermarkPara
+   * @param sect
+   * @param headerType
+   * @throws Exception
+   */
+  private static void insertWatermarkIntoHeader(Paragraph watermarkPara, Section sect, int headerType) throws Exception {
+    HeaderFooter header = sect.getHeadersFooters().getByHeaderFooterType(headerType);
+    if (header == null) {
+      header = new HeaderFooter(sect.getDocument(), headerType);
+      sect.getHeadersFooters().add(header);
+    }
+    header.appendChild(watermarkPara.deepClone(true));
+  }
+
+  /**
+   * 设置水印属性
+   *
+   * @param doc
+   * @param wmText
+   * @param left
+   * @param top
+   * @return
+   * @throws Exception
+   */
+  public static Shape ShapeMore(Document doc, String wmText, double left, double top) throws Exception {
+//        Shape waterShape = new Shape(doc, ShapeType.TEXT_PLAIN_TEXT);
+    Shape waterShape = new Shape(doc, ShapeType.IMAGE);
+    waterShape.getImageData().setImage(wmText);
+    waterShape.setWidth(100.0);
+    waterShape.setHeight(100.0);
+    waterShape.setRotation(0);
+    waterShape.setFilled(true);
+//        //水印内容
+//        waterShape.getTextPath().setText(wmText);
+//        //水印字体
+//        waterShape.getTextPath().setFontFamily("宋体");
+//        //水印宽度
+//        waterShape.setWidth(40);
+//        //水印高度
+//        waterShape.setHeight(13);
+//        //旋转水印
+//        waterShape.setRotation(-40);
+    //水印颜色 浅灰色
+        /*waterShape.getFill().setColor(Color.lightGray);
+        waterShape.setStrokeColor(Color.lightGray);*/
+    waterShape.setStrokeColor(new Color(210, 210, 210));
+    //将水印放置在页面中心
+    waterShape.setLeft(left);
+    waterShape.setTop(top);
+    //设置包装类型
+    waterShape.setWrapType(WrapType.NONE);
+    return waterShape;
+  }
+
+  /**
+   * 插入多个水印
+   *
+   * @param mdoc
+   * @param wmText
+   * @throws Exception
+   */
+  public static void WaterMarkMore(Document mdoc, String wmText) throws Exception {
+    Paragraph watermarkPara = new Paragraph(mdoc);
+//        for (int j = 0; j < 500; j = j + 100)
+//        {
+//            for (int i = 0; i < 700; i = i + 85)
+//            {
+//                Shape waterShape = ShapeMore(mdoc, wmText, j, i);
+//                watermarkPara.appendChild(waterShape);
+//            }
+//        }
+    Shape waterShape = ShapeMore(mdoc, wmText, 155, 300);
+    watermarkPara.appendChild(waterShape);
+    for (Section sect : mdoc.getSections()) {
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_PRIMARY);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_FIRST);
+      insertWatermarkIntoHeader(watermarkPara, sect, HeaderFooterType.HEADER_EVEN);
+    }
+  }
+  /* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ word转pdf操作相关 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
 }
 ```
 
-### 插件使用
+#### 3.使用方法
 ```java
-Map<String, Object> exportMap = new HashMap<>();
-/* ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓  导出数据填充 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ */
-//自定义多行循环
-exportMap.put("studentsSelf", new ArrayList<Map<String, Object>>() {{
-    add(new HashMap<String, Object>() {{
-        put("name", "张三");
-        put("gender", "男");
-        put("age", "20");
-        put("header", Pictures.ofUrl("http://www.baidu.com/img/bdlogo.png").size(20, 20).create());
+String templateUrl = "https://stage-minio1-view-dic.diccp.com/ctcemti-ggc-default/word_template_jx_1.docx";//文件地址
+HashMap<String, Object> params = new HashMap<String, Object>() {{
+    put("number", "1123");//普通的模板文本标记
+    put("name", "测试工程");
+    put("buy", "张三");
+    put("sale", "天恩科技");
+    put("location", "北京市海淀区");
+    put("year", "2025");
+    put("month", "9");
+    put("day", "9");
+    put("LoopRow_Devices", new ArrayList<Map<String, Object>>() {{//word中嵌套了需要循环行的表格,使用固定的LoopRow进行开头,用于工具类后续的判断
+        add(new HashMap<String, Object>() {{
+            put("name", "设备1");
+            put("xh", "型号xx");
+            put("unit", "个");
+            put("num", "1");
+            put("noTaxPrice", "11");
+            put("hasTaxPrice", "22");
+            put("noTaxAll", "33");
+            put("factory", "天恩");
+            put("remark", "无备注");
+        }});
+        add(new HashMap<String, Object>() {{
+            put("name", "设备2");
+            put("xh", "型号2xx");
+            put("unit", "个");
+            put("num", "2");
+            put("noTaxPrice", "22");
+            put("hasTaxPrice", "33");
+            put("noTaxAll", "55");
+            put("factory", "天恩2");
+            put("remark", "无备注1");
+        }});
     }});
-    add(new HashMap<String, Object>() {{
-        put("name", "李四");
-        put("gender", "男");
-        put("age", "21");
-        put("header", Pictures.ofUrl("http://rongcloud-web.qiniudn.com/docs_demo_rongcloud_logo.png").size(20, 20).create());
-    }});
-    add(new HashMap<String, Object>() {{
-        put("name", "王五");
-        put("gender", "女");
-        put("age", "22");
-        put("header", Pictures.ofUrl("http://www.baidu.com/img/bdlogo.png").size(20, 20).create());
-    }});
-}});
-/* ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑  导出数据填充 ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ */
-LoopMultiRowTableRenderPolicy multirowTableRenderPolicy = new LoopMultiRowTableRenderPolicy();
-Configure configure = Configure.builder()
-        .addPlugin('↓', rowTableRenderPolicy) //循环行数据绑定
-        .bind("studentsSelf", multirowTableRenderPolicy) //自定义多行数据复制插件
-        //区块对是默认插件,不需要主动申明
-        .build();
-XWPFTemplate template = XWPFTemplate.compile(templateIns, configure)
-        .render(exportMap);
-String fileName = DateUtil.format(new Date(), "yyyyMMddHHmmss") + "-导出.docx";
-setFileName(response, fileName);//基础使用中的公共方法
+    put("zzTax", "123");
+    put("hasTaxAll", "456");
+    //小计类
+    put("xhXj", "11");
+    put("unitXj", "22");
+    put("numXj", "33");
+    put("noTaxPriceXj", "44");
+    put("hasTaxPriceXj", "55");
+    put("noTaxAllXj", "66");
+    put("img", "http://www.baidu.com/img/bdlogo.png");//图片类型直接的传图片的地址
+}};//模板内容
+// String filePath = WordPdfUtil.inflateWordTemplate(templateUrl, params, WordPdfUtil.WORD_TRANS_TYPE.PDF);
+// setFileName(response, "设备台账.pdf");
+String filePath = WordPdfUtil.inflateWordTemplate(templateUrl, params, WordPdfUtil.WORD_TRANS_TYPE.WORD);
+setFileName(response, "设备台账.docx");
 //写回到响应流中
 OutputStream out = response.getOutputStream();
 BufferedOutputStream bos = new BufferedOutputStream(out);
-template.write(bos);
+IoUtil.copy(FileUtil.getInputStream(filePath),bos);
 bos.flush();
 out.flush();
-PoitlIOUtils.closeQuietlyMulti(template, bos, out);
+PoitlIOUtils.closeQuietlyMulti(bos, out);
 ```
-
-### 填充结果
-![填充结果](/assets/posts/2025-04-10-SpringBoot_Word模板导出功能_多行复制功能的实现/word_export_result1.png)
